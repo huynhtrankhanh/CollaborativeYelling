@@ -3,6 +3,9 @@ const { Readable } = require('stream');
 const app = express();
 const port = 3000;
 
+// Serve static files (HTML and JS)
+app.use(express.static(__dirname + '/public'));
+
 // To store connected clients and their unique identifiers
 const clients = new Map(); // Map<clientId, response>
 
