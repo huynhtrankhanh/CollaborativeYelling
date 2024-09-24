@@ -1,1 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Chat</title>
+</head>
+<body>
+  <h1>Voice Chat</h1>
+  <button id="startChat">Start Chat</button>
 
+  <script>
+    // Function to generate a random 32-byte identifier
+    function generateClientId() {
+      const array = new Uint8Array(32);
+      window.crypto.getRandomValues(array);
+      return Array.from(array, byte => ('0' + byte.toString(16)).slice(-2)).join('');
+    }
+
+    const startChatBtn = document.getElementById('startChat');
+
+    startChatBtn.addEventListener('click', async () => {
+      const clientId = generateClientId(); // Generate unique ID for this client
+
+      // Capture audio from the microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new AudioContext();
+      const mediaStreamSource = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+      mediaStreamSource.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // Open a streaming fetch request with duplex: 'half' to send audio
+      const controller = new AbortController();
+      const { signal } = controller;
+
+      const sendStream = fetch(`/send-audio?id=${clientId}`, {
+        method: 'POST',
+        body: new ReadableStream({
+          start(controller) {
+            processor.onaudioprocess = (e) => {
+              const inputData = e.inputBuffer.getChannelData(0); // Get audio data
+              const float32Array = new Float32Array(inputData); // Convert to Float32Array
+
+              // Send audio data to the server in chunks
+              controller.enqueue(new Uint8Array(float32Array.buffer));
+            };
+          },
+          cancel() {
+            processor.onaudioprocess = null; // Stop processing audio when canceled
+          },
+        }),
+        headers: { 'Content-Type': 'application/octet-stream' },
+        signal,
+        duplex: 'half',
+      });
+
+      // Fetch audio stream from server (raw binary data)
+      fetch(`/receive-audio?id=${clientId}`).then(async (response) => {
+        const reader = response.body.getReader();
+        const audioContext = new AudioContext();
+        const audioQueue = [];
+
+        // Read incoming audio data chunks and play them
+        const playAudio = () => {
+          if (audioQueue.length > 0) {
+            const audioData = audioQueue.shift();
+            audioContext.decodeAudioData(audioData.buffer, (decodedData) => {
+              const source = audioContext.createBufferSource();
+              source.buffer = decodedData;
+              source.connect(audioContext.destination);
+              source.start(0);
+            });
+          }
+          if (audioQueue.length > 0) {
+            setTimeout(playAudio, 100); // Adjust delay as necessary
+          }
+        };
+
+        const processChunk = ({ done, value }) => {
+          if (done) return;
+          audioQueue.push(value.buffer);
+          if (audioQueue.length === 1) playAudio(); // Start playback
+          reader.read().then(processChunk);
+        };
+
+        // Start reading audio data chunks from the stream
+        reader.read().then(processChunk);
+      });
+
+      // Stop the audio stream when needed (e.g., button press)
+      startChatBtn.addEventListener('click', () => {
+        controller.abort(); // Abort the fetch stream
+        processor.disconnect(); // Stop audio processing
+      });
+    });
+  </script>
+</body>
+</html>
