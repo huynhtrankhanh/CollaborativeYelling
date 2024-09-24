@@ -66,8 +66,10 @@
         const playAudio = () => {
           if (audioQueue.length > 0) {
             const audioData = audioQueue.shift();
+            const audioBuffer = audioContext.createBuffer(1, audioData.length, audioContext.sampleRate);
+            audioBuffer.copyToChannel(new Float32Array(audioData), 0); // Copy raw audio data into the AudioBuffer
             const source = audioContext.createBufferSource();
-            source.buffer = audioData;
+            source.buffer = audioBuffer;
             source.connect(audioContext.destination);
             source.start(0);
           }
