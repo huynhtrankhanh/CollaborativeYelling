@@ -66,12 +66,10 @@
         const playAudio = () => {
           if (audioQueue.length > 0) {
             const audioData = audioQueue.shift();
-            audioContext.decodeAudioData(audioData, (decodedData) => {
-              const source = audioContext.createBufferSource();
-              source.buffer = decodedData;
-              source.connect(audioContext.destination);
-              source.start(0);
-            });
+            const source = audioContext.createBufferSource();
+            source.buffer = audioData;
+            source.connect(audioContext.destination);
+            source.start(0);
           }
           if (audioQueue.length > 0) {
             setTimeout(playAudio, 100); // Adjust delay as necessary
