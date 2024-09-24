@@ -35,6 +35,7 @@ app.get('/receive-audio', (req, res) => {
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
 
   // Store the response to push audio data later
   clients.set(clientId, res);
