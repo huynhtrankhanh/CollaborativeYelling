@@ -66,7 +66,7 @@
         const playAudio = () => {
           if (audioQueue.length > 0) {
             const audioData = audioQueue.shift();
-            audioContext.decodeAudioData(audioData.buffer, (decodedData) => {
+            audioContext.decodeAudioData(audioData, (decodedData) => {
               const source = audioContext.createBufferSource();
               source.buffer = decodedData;
               source.connect(audioContext.destination);
