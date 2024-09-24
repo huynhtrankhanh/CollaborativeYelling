@@ -14,6 +14,7 @@ app.post('/send-audio', (req, res) => {
   const clientId = req.query.id; // Get clientId from query params
 
   req.on('data', (chunk) => {
+    console.log("I hear ya", chunk);
     // Broadcast the received audio chunk to all other users except the sender
     for (const [otherClientId, otherRes] of clients.entries()) {
       if (otherClientId !== clientId) {
